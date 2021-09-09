@@ -16,8 +16,13 @@ import java.util.List;
 
 public class NacosConfig {
     public  String serverLIST;
+    //the number of config listening per client
     public int num = 1;
+    //only one group
     public List<String> group;
     public List<String> dataIds;
+    //the threshold of timeout
     public int threshold;
+    //the period of publish config
+    public long pubTime;
 }

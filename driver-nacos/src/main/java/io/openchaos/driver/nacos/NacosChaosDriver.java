@@ -37,10 +37,6 @@ public class NacosChaosDriver implements NacosDriver {
 
     private NacosConfig nacosConfig;
 
-
-    @Override public NacosClient createClient(int id) {
-        return new NacosChaosClient(nacosConfig,id);
-    }
     @Override public NacosClient createClient(int id,NacosCallback nacosCallback) {
         return new NacosChaosClient(nacosConfig,id,nacosCallback);
     }

@@ -34,7 +34,7 @@ public class Arguments {
     @Parameter(names = {
         "-c",
         "--concurrency"}, description = "The number of clients. eg: 5", validateWith = PositiveInteger.class)
-    public int concurrency = 4;
+    public int concurrency = 1;
 
     @Parameter(names = {
         "-r",

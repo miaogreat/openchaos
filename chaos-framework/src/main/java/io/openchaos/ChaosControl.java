@@ -432,7 +432,7 @@ public class ChaosControl {
 
         List<Checker> checkerList = new ArrayList<>();
 
-        List<String> points;
+        List<String> points = new ArrayList<>();
 
         switch (arguments.model) {
             case QueueModel.MODEL_NAME:
@@ -447,7 +447,9 @@ public class ChaosControl {
                 break;
             case NacosModel.MODEL_NAME:
                 checkerList.add(new NacosChecker(arguments.outputDir, historyFile,driverConfigFile));
-                points = Collections.singletonList("receive");
+                //points = Collections.singletonList("receive");
+                points.add("receive");
+                points.add("pub");
                 checkerList.add(new GraphChecker(points, arguments.outputDir, historyFile, testStartTimeStamp, testEndTimestamp, isUploadImage, ossConfig));
                 break;
             default:

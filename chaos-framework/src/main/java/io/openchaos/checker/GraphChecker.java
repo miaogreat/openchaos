@@ -34,6 +34,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 public class GraphChecker implements Checker {
@@ -126,14 +129,16 @@ public class GraphChecker implements Checker {
 //        p.getAxis("x").setBoundaries(0, (testEndTimestamp - testStartTimestamp) / 100);
         p.getAxis("y").setLabel("latency(ms)");
 //        p.getAxis("y").setBoundaries(20, 2 * 100);
-        p.getAxis("y").setLogScale(true);
+//        p.getAxis("y").setLogScale(true);
         p.setKey(JavaPlot.Key.TOP_RIGHT);
 
         List<Point> faultIntervalList = new ArrayList<>();
         List<Point> invokeSuccessList = new ArrayList<>();
         List<Point> invokeFailureList = new ArrayList<>();
         List<Point> invokeUnknownList = new ArrayList<>();
-
+        List<Point> invokePubFailureList = new ArrayList<>();
+        List<Point> invokePubLostList = new ArrayList<>();
+        Set<String> invokeSubSet = new HashSet<>();
         //Fault interval
         List<String[]> faultLines = Files.lines(Paths.get(originFilePath)).
                 filter(x -> x.startsWith("fault")).map(x -> x.split("\t")).collect(Collectors.toList());
@@ -168,49 +173,78 @@ public class GraphChecker implements Checker {
             faultSet.setTitle("fault interval");
             p.addPlot(faultSet);
         }
-
+        // receive
         for (String point : points) {
+            if (point.equals("receive")) {
+                Files.lines(Paths.get(originFilePath)).map(x -> x.split("\t")).filter(x -> !x[0].equals("fault")).filter(x -> x[2].equals("RESPONSE")).forEach(line -> {
+                    if (line[1].equals(point)) {
+                        switch (line[3]) {
 
-            Files.lines(Paths.get(originFilePath)).map(x -> x.split("\t")).filter(x -> !x[0].equals("fault")).filter(x -> x[2].equals("RESPONSE")).forEach(line -> {
-                if (line[1].equals(point)) {
+                            case "SUCCESS":
+                                invokeSuccessList.add(new Point((Long.parseLong(line[11]) - testStartTimestamp) / 100, Long.parseLong(line[12])));
+                                break;
+                            case "FAILURE":
+                                invokeFailureList.add(new Point((Long.parseLong(line[10]) - testStartTimestamp) / 100, 0));
+                                break;
+                            case "UNKNOWN":
+                                invokeUnknownList.add(new Point((Long.parseLong(line[11]) - testStartTimestamp) / 100, Long.parseLong(line[12])));
+
+                                break;
+
+                            default:
+                                log.error("Error data in invoke");
+                        }
+                        invokeSubSet.add(line[9]);
+                    }
+                });
+
+                if (invokeSuccessList.size() != 0) {
+                    renderPoint(p, invokeSuccessList, point + " success", 4, NamedPlotColor.BLACK);
+                }
+
+                if (invokeFailureList.size() != 0) {
+                    renderPoint(p, invokeFailureList, point + " failure", 4, NamedPlotColor.RED);
+                }
+
+                if (invokeUnknownList.size() != 0) {
+                    renderPoint(p, invokeUnknownList, point + " unknown", 4, NamedPlotColor.BLUE);
+                }
+
+                invokeSuccessList.clear();
+                invokeFailureList.clear();
+                invokeUnknownList.clear();
+
+            } else {
+                Files.lines(Paths.get(originFilePath)).map(x -> x.split("\t")).filter(x -> !x[0].equals("fault")).filter(x -> x[2].equals("REQUEST")).forEach(line -> {
                     switch (line[3]) {
-                        case "SUCCESS":
-                            invokeSuccessList.add(new Point((Long.parseLong(line[11]) - testStartTimestamp) / 100, Long.parseLong(line[12])));
-
-                            break;
                         case "FAILURE":
-                            invokeFailureList.add(new Point((Long.parseLong(line[10]) - testStartTimestamp) / 100, 0));
-
+                            Random c = new Random();
+                            invokePubFailureList.add(new Point((Long.parseLong(line[10]) - testStartTimestamp) / 100, (-1) * c.nextInt(100)));
                             break;
-                        case "UNKNOWN":
-                            invokeUnknownList.add(new Point((Long.parseLong(line[10]) - testStartTimestamp) / 100, Long.parseLong(line[12])));
-
-                            break;
-
+                        case "SUCCESS":
+                            if (!invokeSubSet.contains(line[9])) {
+                                Random sc = new Random();
+                                invokePubLostList.add(new Point((Long.parseLong(line[10]) - testStartTimestamp) / 100, (-1) * sc.nextInt(100)));
+                            }
                         default:
                             log.error("Error data in invoke");
                     }
+
+                });
+
+                if (invokePubLostList.size() != 0) {
+                    renderPoint(p, invokePubLostList, point + " lost", 4, NamedPlotColor.YELLOW);
                 }
-            });
 
-            if (invokeSuccessList.size() != 0) {
-                renderPoint(p, invokeSuccessList, point + " success", 4, NamedPlotColor.BLACK);
+                if (invokePubFailureList.size() != 0) {
+                    renderPoint(p, invokePubFailureList, point + " failure", 4, NamedPlotColor.PURPLE);
+                }
+
+                invokePubLostList.clear();
+                invokePubFailureList.clear();
+
             }
-
-            if (invokeFailureList.size() != 0) {
-                renderPoint(p, invokeFailureList, point + " failure", 4, NamedPlotColor.GREEN);
-            }
-
-            if (invokeUnknownList.size() != 0) {
-                renderPoint(p, invokeUnknownList, point + " unknown", 4, NamedPlotColor.BLUE);
-            }
-
-            invokeSuccessList.clear();
-            invokeFailureList.clear();
-            invokeUnknownList.clear();
-
         }
-
         p.setKey(JavaPlot.Key.BELOW);
 
         p.plot();

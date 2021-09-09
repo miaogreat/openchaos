@@ -50,13 +50,6 @@ public class NacosChaosClient implements NacosClient {
     private Map<String, Long> configMap = new HashMap<>();
 
 
-    public NacosChaosClient(NacosConfig nacosConfig ,int id) {
-        this.nacosConfig = nacosConfig;
-        this.id = id;
-        prepare();
-    }
-
-
     public NacosChaosClient(NacosConfig nacosConfig ,int id,NacosCallback nacosCallback) {
         this.nacosConfig = nacosConfig;
         this.id = id;
@@ -69,25 +62,7 @@ public class NacosChaosClient implements NacosClient {
             e.printStackTrace();
         }
     }
-    public void prepare() {
-        Properties properties = new Properties();
-        properties.put(PropertyKeyConst.SERVER_ADDR, nacosConfig.serverLIST);
 
-        properties.put("keyId", "alias/acs/mse");
-        properties.put("regionId", "cn-hangzhou");
-        try {
-            nacosConfigPub = NacosFactory.createConfigService(properties);
-            nacosConfigListener = NacosFactory.createConfigService(properties);
-            String name;
-            for (int i = 0; i < nacosConfig.num; i++) {
-                name = "client: " + id + "dataId: " + nacosConfig.dataIds.get(id) + i + "group: " + nacosConfig.group.get(0);
-//                boolean isSuccess = nacosConfigPub.removeConfig(nacosConfig.dataIds.get(id) + i, nacosConfig.group.get(0));
-                nacosConfigListener.addListener(nacosConfig.dataIds.get(id) + i, nacosConfig.group.get(0), new DefaultConfigListener(name));
-            }
-        } catch (NacosException e) {
-            LOG.info("Nacos configservice create or listen error");
-        }
-    }
     public void Nacosprepare() {
         //add record listener
         Properties properties = new Properties();
@@ -100,8 +75,6 @@ public class NacosChaosClient implements NacosClient {
             for (int i = 0; i < nacosConfig.num; i++) {
                 String tempdataId = nacosConfig.dataIds.get(id) + i;
                 String tempgroup = nacosConfig.group.get(0);
-
-
                 nacosConfigListener.addListener(tempdataId, tempgroup, new Listener() {
                     @Override
                     public Executor getExecutor() {
@@ -134,14 +107,12 @@ public class NacosChaosClient implements NacosClient {
     @Override
     public InvokeResult put(Optional<String> key, String dataId,String group,String config) {
         try {
-            Thread.sleep(2000);
+            Thread.sleep(this.nacosConfig.pubTime);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        boolean result = false;
-
         try {
-            result = nacosConfigPub.publishConfig(dataId, group, config);
+            boolean result = nacosConfigPub.publishConfig(dataId, group, config);
             sendtimestamp = System.currentTimeMillis();
             if (result) {
                 configMap.put(config,sendtimestamp);
